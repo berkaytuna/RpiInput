@@ -1,7 +1,8 @@
 OUT = main
-SRC = main.cpp civetweb.c bcm2835.c
+SRC = main.cpp src/civetweb.c src/bcm2835.c
 CC = g++
 CFLAGS = -o
+IFLAGS = -Iinc
 LFLAGS = -lpthread
 
 $(OUT): $(SRC)
