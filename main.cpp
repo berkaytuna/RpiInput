@@ -38,8 +38,8 @@ static const char* html_form =
 "<html><body>Reader"
 "<form method=\"POST\" action=\"/handle_post_request\">"
 "Server IP-Address: <input type=\"text\" name=\"input_1\" /> <br/>"
-"Fever Measurement: <input type=\"text\" name=\"input_2\" /> <br/>"
-"Hand Sanitizer: <input type=\"text\" name=\"input_3\" /> <br/>"
+"First Pin: <input type=\"text\" name=\"input_2\" /> <br/>"
+"Second Pin: <input type=\"text\" name=\"input_3\" /> <br/>"
 "Delay Time: <input type=\"text\" name=\"input_4\" /> <br/>"
 "<input type=\"submit\" />"
 "</form></body></html>";
