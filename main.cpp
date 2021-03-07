@@ -27,7 +27,7 @@ using namespace std;
 #define SANPIN RPI_BPLUS_GPIO_J8_38
 #define DEFAULT_BUFLEN 512
 #define SERVER_PORT 8150
-#define SETTINGS_SIZE 4
+#define SETTINGS_SIZE 5
 
 struct mg_context* ctx;
 int serverSocket = 8150;
@@ -41,6 +41,7 @@ static const char* html_form =
 "First Pin: <input type=\"text\" name=\"input_2\" /> <br/>"
 "Second Pin: <input type=\"text\" name=\"input_3\" /> <br/>"
 "Delay Time: <input type=\"text\" name=\"input_4\" /> <br/>"
+"Read Time: <input type=\"text\" name=\"input_5\" /> <br/>"
 "<input type=\"submit\" />"
 "</form></body></html>";
 
@@ -77,7 +78,7 @@ int writeToConfig(vector <char*> dataArray)
 static int begin_request_handler(struct mg_connection* conn)
 {
     const struct mg_request_info* ri = mg_get_request_info(conn);
-    char post_data[1024], serverIp[sizeof(post_data)], fever[sizeof(post_data)], sanitizer[sizeof(post_data)], delayt[sizeof(post_data)];
+    char post_data[1024], serverIp[sizeof(post_data)], fev[sizeof(post_data)], san[sizeof(post_data)], delayt[sizeof(post_data)], readt[sizeof(post_data)];
     int post_data_len;
 
     if (!strcmp(ri->local_uri, "/handle_post_request")) {
@@ -86,9 +87,10 @@ static int begin_request_handler(struct mg_connection* conn)
 
         // Parse form data. input1 and input2 are guaranteed to be NUL-terminated
         mg_get_var(post_data, post_data_len, "input_1", serverIp, sizeof(serverIp));
-        mg_get_var(post_data, post_data_len, "input_2", fever, sizeof(fever));
-		mg_get_var(post_data, post_data_len, "input_3", sanitizer, sizeof(sanitizer));
-		mg_get_var(post_data, post_data_len, "input_4", delayt, sizeof(delayt));
+        mg_get_var(post_data, post_data_len, "input_2", fever, sizeof(fev));
+	mg_get_var(post_data, post_data_len, "input_3", sanitizer, sizeof(san));
+	mg_get_var(post_data, post_data_len, "input_4", delayt, sizeof(delayt));
+	mg_get_var(post_data, post_data_len, "input_5", readt, sizeof(readt));
 
         // Send reply to the client, showing submitted form values.
         mg_printf(conn, "HTTP/1.0 200 OK\r\n"
@@ -101,7 +103,7 @@ static int begin_request_handler(struct mg_connection* conn)
 
 		while (1)
 		{
-			vector <char*> dataArray = { serverIp, fever, sanitizer, delayt };
+			vector <char*> dataArray = { serverIp, fev, san, delayt, readt };
 			int writeResult = writeToConfig(dataArray);
 			if (writeResult == 0) break;
 		}
@@ -130,6 +132,11 @@ void startWebServer()
     ctx = mg_start(&callbacks, NULL, options);
     //getchar();  // Wait until user hits "enter"
     //mg_stop(ctx);
+}
+
+void readPin(int& in, int pin, string msg) {
+    in = unsigned(bcm2835_gpio_lev(pin));
+    cout << msg << in << endl;
 }
 
 void delayfor(int ms) {
@@ -265,31 +272,51 @@ int main()
 		while (1) {
 			if (bSettingsChanged) break;
 
-			int fevSet = stoi(settings[1]);
-			int sanSet = stoi(settings[2]);
+			const int fevSet = stoi(settings[1]);
+			const int sanSet = stoi(settings[2]);
+			const int readt = stoi(settings[4]);
+			const int dt = 500;
 			int fevIn = 0;
 			int sanIn = 0;
 			bool bSend = false;
 
-			// Step 3.1.1: read pins
-			if (fevSet == 1) {
-				fevIn = unsigned(bcm2835_gpio_lev(FEVPIN));
-				cout << "FEVPIN: " << fevIn << endl;
+			// Step 3.1: read pins and set sending condition
+			if (fevSet == 1 && sanSet == 1) {
+				readPin(fevIn, FEVPIN, "FEVPIN: ");
+				readPin(sanIn, SANPIN, "SANPIN: ")
+				if (fevIn == 1) {
+					for (int i = 0; i < readt / dt; i++ ) {
+						readPin(sanIn, SANPIN, "SANPIN: ");
+						if (sanIn == 1) {
+							bSend = true;
+							break;
+						}
+						delayfor(dt);
+					}
+				}
+				else if (sanIn == 1) {
+					for (int i = 0; i < readt / dt; i++ ) {
+						readPin(fevIn, FEVPIN, "FEVPIN: ");
+						if (fevIn == 1) {
+							bSend = true;
+							break;
+						}
+						delayfor(dt);
+					}
+				}
 			}
-			if (sanSet == 1) {
-				sanIn = unsigned(bcm2835_gpio_lev(SANPIN));
-				cout << "SANPIN: " << sanIn << endl;
+			else if (fevSet == 1 && sanSet == 0) {
+				readPin(fevIn, FEVPIN, "FEVPIN: ");
+				if (fevIn == 1)
+					bSend = true;
+			}
+			else if (fevSet == 0 && sanSet == 1) {
+				readPin(sanIn, SANPIN, "SANPIN: ");
+				if (sanIn == 1)
+					bSend = true;
 			}
 			
-			// Step 3.1.2: set sending condition
-			int sumSet = fevSet + sanSet;
-			int sumIn = fevIn + sanIn;
-
-			if (sumIn != 0 && sumIn == sumSet )
-				bSend = true;
-			else 
-				bSend = false;
-
+			
 			// Step 3.2: send command
 			if (bSend == true) {
 				char commandt[1] = { 0xAA };
@@ -303,7 +330,7 @@ int main()
 				printf("sendResult: %d\n", sendResult);
 			}
 			else
-				delayfor(500);
+				delayfor(dt);
 		}
 		if (bSettingsChanged) {
 			close(serverSocket);
