@@ -6,4 +6,4 @@ IFLAGS = -Iinc
 LFLAGS = -lpthread
 
 $(OUT): $(SRC)
-	$(CC) $(CFLAGS) $(OUT) $(LFLAGS) $(SRC)
+	$(CC) $(CFLAGS) $(OUT) $(IFLAGS) $(LFLAGS) $(SRC)
