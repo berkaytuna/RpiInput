@@ -87,8 +87,8 @@ static int begin_request_handler(struct mg_connection* conn)
 
         // Parse form data. input1 and input2 are guaranteed to be NUL-terminated
         mg_get_var(post_data, post_data_len, "input_1", serverIp, sizeof(serverIp));
-        mg_get_var(post_data, post_data_len, "input_2", fever, sizeof(fev));
-	mg_get_var(post_data, post_data_len, "input_3", sanitizer, sizeof(san));
+        mg_get_var(post_data, post_data_len, "input_2", fev, sizeof(fev));
+	mg_get_var(post_data, post_data_len, "input_3", san, sizeof(san));
 	mg_get_var(post_data, post_data_len, "input_4", delayt, sizeof(delayt));
 	mg_get_var(post_data, post_data_len, "input_5", readt, sizeof(readt));
 
@@ -283,7 +283,7 @@ int main()
 			// Step 3.1: read pins and set sending condition
 			if (fevSet == 1 && sanSet == 1) {
 				readPin(fevIn, FEVPIN, "FEVPIN: ");
-				readPin(sanIn, SANPIN, "SANPIN: ")
+				readPin(sanIn, SANPIN, "SANPIN: ");
 				if (fevIn == 1) {
 					for (int i = 0; i < readt / dt; i++ ) {
 						readPin(sanIn, SANPIN, "SANPIN: ");
